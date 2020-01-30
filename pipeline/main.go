@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"pipeline/node"
+	"strconv"
 )
 
 func main() {
@@ -14,7 +15,11 @@ func main() {
 func externalSort() {
 	// mergeDemo()
 	// pipelineDemo()
-	p := createPipeline("small.in", 512, 4)
+	// p := createPipeline("small.in", 512, 4)
+	// writeToFile("small.out", p)
+	// printFile("small.out")
+
+	p := createNetworkPipeline("small.in", 512, 4)
 	writeToFile("small.out", p)
 	printFile("small.out")
 }
@@ -33,6 +38,30 @@ func createPipeline(filename string, fileSize, chunkCount int) <-chan int {
 		sortRes = append(sortRes, node.InMemSort(source))
 	}
 	// 使用 ReaderSource 封装读取网络发送过来的排序好的数据
+	// 将数据源进行归并
+	return node.MergeN(sortRes...)
+}
+
+func createNetworkPipeline(filename string, fileSize, chunkCount int) <-chan int {
+	chunSize := fileSize / chunkCount
+	var sortAddr []string
+	for i := 0; i < chunkCount; i++ {
+		file, err := os.Open(filename)
+		if err != nil {
+			panic(err)
+		}
+		file.Seek(int64(i*chunSize), 0)
+		source := node.ReaderSource(bufio.NewReader(file), chunSize)
+		// 内部排序完成，可以通过网络发送到下游节点
+		addr := ":" + strconv.Itoa(7000 + i)
+		node.NetworkSink(addr, node.InMemSort(source))
+		sortAddr = append(sortAddr, addr)
+	}
+	// 读取网络发送过来的排序好的数据
+	var sortRes []<-chan int
+	for _, addr := range sortAddr {
+		sortRes = append(sortRes, node.NetworkSource(addr))
+	}
 	// 将数据源进行归并
 	return node.MergeN(sortRes...)
 }
