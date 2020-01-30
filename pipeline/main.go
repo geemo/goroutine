@@ -29,8 +29,11 @@ func createPipeline(filename string, fileSize, chunkCount int) <-chan int {
 		}
 		file.Seek(int64(i*chunSize), 0)
 		source := node.ReaderSource(bufio.NewReader(file), chunSize)
+		// 内部排序完成，可以通过网络发送到下游节点
 		sortRes = append(sortRes, node.InMemSort(source))
 	}
+	// 使用 ReaderSource 封装读取网络发送过来的排序好的数据
+	// 将数据源进行归并
 	return node.MergeN(sortRes...)
 }
 

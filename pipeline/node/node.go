@@ -19,7 +19,7 @@ func ArraySource(arr ...int) <-chan int {
 }
 
 func ReaderSource(reader io.Reader, chunkSize int) <-chan int {
-	out := make(chan int)
+	out := make(chan int, 1024)
 	go func() {
 		buf := make([]byte, 8)
 		bytesSize := 0
@@ -59,7 +59,7 @@ func WriterSink(writer io.Writer, in <-chan int) {
 }
 
 func InMemSort(in <-chan int) <-chan int {
-	out := make(chan int)
+	out := make(chan int, 1024)
 	go func() {
 		var arr []int
 		for v := range in {
@@ -75,7 +75,7 @@ func InMemSort(in <-chan int) <-chan int {
 }
 
 func Merge(in1, in2 <-chan int) <-chan int {
-	out := make(chan int)
+	out := make(chan int, 1024)
 	go func() {
 		v1, ok1 := <-in1
 		v2, ok2 := <-in2
